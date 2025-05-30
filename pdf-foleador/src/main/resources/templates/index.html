@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Foleador de PDFs</title>
+    <style>
+        body {
+            background-color: #f9f9f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            background-color: #e63946;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+
+        header img {
+            max-height: 60px;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        main {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 320px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input[type="file"],
+        input[type="number"],
+        button {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        input[type="file"],
+        input[type="number"] {
+            background-color: #f1f1f1;
+        }
+
+        button {
+            background-color: #e63946;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #c0272d;
+        }
+
+        footer {
+            margin-top: 50px;
+            font-size: 13px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" alt="Icono PDF">
+    <h1>Foleador de PDFs</h1>
+</header>
+
+<main>
+    <form th:action="@{/upload}" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="application/pdf" required>
+        <input type="number" name="folios" placeholder="Cantidad de páginas a folear" required min="1">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+        <button type="submit">Subir y Folear</button>
+    </form>
+</main>
+
+<footer>
+    © 2025
+</footer>
+
+</body>
+</html>
