@@ -1,4 +1,4 @@
-package com.example.pdf_foleador.controller;
+package com.example.pdf_foleador.login;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,4 +11,3 @@ public class LoginController {
         return "login"; // busca login.html en templates
     }
 }
-

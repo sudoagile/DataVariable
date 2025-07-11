@@ -1,106 +1,237 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Foleador de PDFs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+    </script>
     <style>
-        body {
-            background-color: #f9f9f9;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        header {
-            width: 100%;
-            background-color: #e63946;
-            padding: 20px;
-            text-align: center;
-            color: white;
-        }
-
-        header img {
-            max-height: 60px;
-            vertical-align: middle;
-            margin-right: 10px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        main {
-            margin-top: 40px;
-            padding: 20px;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 320px;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        input[type="file"],
-        input[type="number"],
-        button {
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
-
-        input[type="file"],
-        input[type="number"] {
-            background-color: #f1f1f1;
-        }
-
-        button {
-            background-color: #e63946;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #c0272d;
-        }
-
-        footer {
-            margin-top: 50px;
-            font-size: 13px;
-            color: #999;
-        }
+        body { background-color: #f9f9f9; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        header { width: 100%; background-color: #e63946; padding: 20px; text-align: center; color: white; }
+        header img { max-height: 60px; vertical-align: middle; margin-right: 10px; }
+        h1 { margin: 0; font-size: 28px; }
+        main { display: flex; flex-direction: row; justify-content: center; gap: 40px; margin-top: 40px; padding: 20px; flex-wrap: wrap; }
+        .form-container { background-color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 320px; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        input[type="file"], input[type="number"], select, button { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; background-color: #f1f1f1; }
+        button { background-color: #e63946; color: white; border: none; cursor: pointer; font-weight: bold; transition: background-color 0.3s; }
+        button:hover { background-color: #c0272d; }
+        footer { margin-top: 50px; font-size: 13px; color: #999; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; flex-direction: column; }
+        .spinner { border: 8px solid #f3f3f3; border-top: 8px solid #ffffff; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner-text { color: white; margin-top: 15px; font-size: 18px; font-weight: bold; }
+        #preview-container { position: relative; border: 1px solid #ccc; background-color: white; max-width: 400px; }
+        canvas { width: 100%; height: auto; }
     </style>
 </head>
 <body>
-
 <header>
     <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" alt="Icono PDF">
     <h1>Foleador de PDFs</h1>
 </header>
 
 <main>
-    <form th:action="@{/upload}" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="application/pdf" required>
-        <input type="number" name="folios" placeholder="Cantidad de páginas a folear" required min="1">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-        <button type="submit">Subir y Folear</button>
-    </form>
+    <div class="form-container">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="pdfFile" name="file" accept="application/pdf" required>
+            <input type="number" id="coordX" name="coordX" placeholder="Posición horizontal (X)" required min="0">
+            <input type="number" id="coordY" name="coordY" placeholder="Posición vertical (Y)" required min="0">
+            <input type="number" id="folios" name="folios" placeholder="Cantidad de páginas a folear" required readonly style="background-color:#e0e0e0;">
+            <input type="number" name="startPage" id="startPage" placeholder="Página de inicio" required min="1">
+            <input type="number" name="endPage" id="endPage" placeholder="Página final" required min="1">
+            <select name="size" id="size" required>
+                <option value="a4">A4 (595 x 842)</option>
+                <option value="carta">Carta (612 x 792)</option>
+                <option value="oficio">Oficio (612 x 936)</option>
+                <option value="medio">Medio Oficio (396 x 612)</option>
+                <option value="cuarto" selected>¼ Oficio (306 x 396)</option>
+            </select>
+            <select name="copiasPorFolio" required>
+                <option value="1">Original</option>
+                <option value="2">Duplicado</option>
+                <option value="3">Triplicado</option>
+                <option value="4">Cuatriplicado</option>
+                <option value="5">Quintuplicado</option>
+            </select>
+            <label for="division">Dividir cada hoja en:</label>
+            <select id="division" name="division" required>
+                <option value="1">1 por hoja</option>
+                <option value="2">2 por hoja (½ hoja)</option>
+                <option value="4">4 por hoja (¼ hoja)</option>
+            </select>
+            <label for="orientacion">Orientación del texto:</label>
+            <select name="orientacion" id="orientacion" required>
+                <option value="horizontal" selected>Horizontal</option>
+                <option value="vertical">Vertical (girado)</option>
+            </select>
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}" />
+            <button type="submit">Subir y Folear</button>
+        </form>
+    </div>
+
+    <div>
+        <h3 style="margin-bottom: 10px;">Previsualización del folio</h3>
+        <div id="preview-container">
+            <canvas id="preview-canvas"></canvas>
+        </div>
+    </div>
 </main>
 
-<footer>
-    © 2025
-</footer>
+<div id="overlay" class="overlay">
+    <div class="spinner"></div>
+    <div class="spinner-text">Procesando archivo...</div>
+</div>
 
+<footer>© 2025</footer>
+
+<script>
+    const form = document.getElementById("uploadForm");
+    const overlay = document.getElementById("overlay");
+    const canvas = document.getElementById("preview-canvas");
+    const ctx = canvas.getContext("2d");
+
+    const pdfFileInput = document.getElementById("pdfFile");
+    const coordXInput = document.getElementById("coordX");
+    const coordYInput = document.getElementById("coordY");
+    const foliosInput = document.getElementById("folios");
+    const startPageInput = document.getElementById("startPage");
+    const endPageInput = document.getElementById("endPage");
+    const sizeSelect = document.getElementById("size");
+    const divisionSelect = document.getElementById("division");
+    const orientacionSelect = document.getElementById("orientacion");
+
+    const pageSizes = {
+        "a4": [595, 842],
+        "carta": [612, 792],
+        "oficio": [612, 936],
+        "medio": [396, 612],
+        "cuarto": [306, 396]
+    };
+
+    function updateFolios() {
+        const start = parseInt(startPageInput.value);
+        const end = parseInt(endPageInput.value);
+        if (!isNaN(start) && !isNaN(end) && end >= start) {
+            foliosInput.value = end - start + 1;
+        } else {
+            foliosInput.value = '';
+        }
+    }
+
+    startPageInput.addEventListener("input", updateFolios);
+    endPageInput.addEventListener("input", updateFolios);
+
+    [sizeSelect, orientacionSelect, pdfFileInput, coordXInput, coordYInput, divisionSelect].forEach(el => {
+        el.addEventListener("input", renderPreview);
+    });
+
+    canvas.addEventListener("click", function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        coordXInput.value = Math.round(x);
+        coordYInput.value = Math.round(y);
+        renderPreview();
+    });
+
+    async function renderPreview() {
+        const file = pdfFileInput.files[0];
+        const size = sizeSelect.value;
+        const orientation = orientacionSelect.value;
+        const [w, h] = pageSizes[size];
+
+        canvas.width = w;
+        canvas.height = h;
+
+        ctx.clearRect(0, 0, w, h);
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async function() {
+                const typedarray = new Uint8Array(reader.result);
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: w / page.view[2] });
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                drawFolios(w, h);
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            drawFolios(w, h);
+        }
+    }
+
+    function drawFolios(width, height) {
+        const x = parseFloat(coordXInput.value || 0);
+        const y = parseFloat(coordYInput.value || 0);
+        const division = parseInt(divisionSelect.value);
+        const orientation = orientacionSelect.value;
+
+        let rows = division === 4 ? 2 : (division === 2 ? 2 : 1);
+        let cols = division === 4 ? 2 : (division === 2 ? 1 : 1);
+        const divWidth = width / cols;
+        const divHeight = height / rows;
+
+        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = 'red';
+        ctx.textAlign = 'left';
+
+        let folio = 1;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const offsetX = c * divWidth;
+                const offsetY = r * divHeight;
+                const drawX = offsetX + x;
+                const drawY = offsetY + y;
+
+                ctx.save();
+                if (orientation === "vertical") {
+                    ctx.translate(drawX, drawY);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillText(`Folio: ${String(folio).padStart(6, '0')}`, 0, 0);
+                } else {
+                    ctx.fillText(`Folio: ${String(folio).padStart(6, '0')}`, drawX, drawY);
+                }
+                ctx.restore();
+                folio++;
+            }
+        }
+
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+    }
+
+    form.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        overlay.style.display = "flex";
+        const formData = new FormData(form);
+        try {
+            const response = await fetch("/upload", { method: "POST", body: formData });
+            if (!response.ok) throw new Error("Error al procesar el PDF.");
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "folio.pdf";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            overlay.style.display = "none";
+        }
+    });
+
+    renderPreview();
+</script>
 </body>
 </html>

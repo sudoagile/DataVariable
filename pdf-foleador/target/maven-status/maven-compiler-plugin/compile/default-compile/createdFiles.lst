@@ -1,0 +1,5 @@
+com\example\pdf_foleador\login\LoginController.class
+com\example\pdf_foleador\service\PdfService.class
+com\example\pdf_foleador\config\SecurityConfig.class
+com\example\pdf_foleador\PdfFoleadorApplication.class
+com\example\pdf_foleador\controller\PdfController.class
