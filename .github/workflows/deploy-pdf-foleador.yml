@@ -1,0 +1,30 @@
+name: Deploy pdf-foleador to Azure
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'pdf-foleador/**'  # Solo se activa con cambios aquí
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build JAR
+        working-directory: ./pdf-foleador  # ¡Clave!
+        run: mvn clean package
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'FoleoQdigital'  # Nombre exacto de tu App Service
+          package: './pdf-foleador/target/pdf-foleador-0.0.1-SNAPSHOT.jar'  # Ruta específica
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
